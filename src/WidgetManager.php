@@ -1,5 +1,4 @@
 <?php
-
 namespace Highvertical\WidgetPackage;
 
 use Illuminate\Support\Facades\Cache;
@@ -32,7 +31,7 @@ class WidgetManager
             throw new Exception("Widget [{$alias}] must have a render method.");
         }
 
-        $cacheKey = 'widget_' . $alias . '_' . md5(serialize($params));
+        $cacheKey = 'widget_' . $alias . '_' . md5(json_encode($params));
         $cacheEnabled = config('widgets.cache.enabled');
         $cacheTTL = config('widgets.cache.ttl');
 
@@ -41,6 +40,15 @@ class WidgetManager
         }
 
         $output = $widget->render($params);
+
+        // Convert output to a serializable format
+        if (is_object($output)) {
+            if (method_exists($output, '__toString')) {
+                $output = (string) $output; // Convert to string if possible
+            } else {
+                $output = json_encode($output); // Convert to JSON string
+            }
+        }
 
         if ($cacheEnabled) {
             $this->cache->put($cacheKey, $output, $cacheTTL);

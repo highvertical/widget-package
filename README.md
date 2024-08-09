@@ -34,7 +34,7 @@ composer require highvertical/widget-package
 Publish the package's configuration file to your Laravel application's config directory:
 
 ```bash
-php artisan widget:publish-config
+php artisan vendor:publish --tag=widget-config
 ```
 
 This command will create a config/widgets.php file in your application.

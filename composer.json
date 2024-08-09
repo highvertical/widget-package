@@ -1,11 +1,11 @@
 {
     "name": "highvertical/widget-package",
     "description": "A simple and flexible widget package for Laravel",
-    "version": "1.0.0",
+    "type": "package",
     "license": "MIT",
     "authors": [
         {
-            "name": "Jimoh Wareez Oluwaseun",
+            "name": "Highvertical",
             "email": "highverticaltechnologies@gmail.com"
         }
     ],
