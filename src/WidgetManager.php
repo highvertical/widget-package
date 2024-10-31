@@ -7,11 +7,10 @@ use Exception;
 class WidgetManager
 {
     protected $widgets = [];
-    protected $cache;
 
-    public function __construct($cache)
+    public function __construct()
     {
-        $this->cache = $cache;
+        //
     }
 
     public function registerWidget($alias, $widget)
@@ -21,39 +20,36 @@ class WidgetManager
 
     public function render($alias, $params = [])
     {
-        if (!isset($this->widgets[$alias])) {
-            throw new Exception("Widget [{$alias}] not found.");
-        }
-
-        $widget = app($this->widgets[$alias]);
-
-        if (!method_exists($widget, 'render')) {
-            throw new Exception("Widget [{$alias}] must have a render method.");
-        }
-
-        $cacheKey = 'widget_' . $alias . '_' . md5(json_encode($params));
-        $cacheEnabled = config('widgets.cache.enabled');
-        $cacheTTL = config('widgets.cache.ttl');
-
-        if ($cacheEnabled && $this->cache->has($cacheKey)) {
-            return $this->cache->get($cacheKey);
-        }
-
-        $output = $widget->render($params);
-
-        // Convert output to a serializable format
-        if (is_object($output)) {
-            if (method_exists($output, '__toString')) {
-                $output = (string) $output; // Convert to string if possible
-            } else {
-                $output = json_encode($output); // Convert to JSON string
+        try {
+            if (!isset($this->widgets[$alias])) {
+                throw new Exception("Widget [{$alias}] not found.");
             }
-        }
 
-        if ($cacheEnabled) {
-            $this->cache->put($cacheKey, $output, $cacheTTL);
-        }
+            $widget = app($this->widgets[$alias]);
 
-        return $output;
+            if (!method_exists($widget, 'render')) {
+                throw new Exception("Widget [{$alias}] must have a render method.");
+            }
+
+            $output = $widget->render($params);
+
+            // Convert output to a serializable format if necessary
+            if (is_object($output)) {
+                $output = method_exists($output, '__toString') ? (string) $output : json_encode($output);
+            }
+
+            return $output;
+        } catch (Exception $e) {
+            // Log the error for easier debugging
+            \Log::error("Error rendering widget [{$alias}]: " . $e->getMessage(), [
+                'alias' => $alias,
+                'params' => $params,
+                'exception' => $e,
+            ]);
+
+            // Optionally, return a fallback message or empty string
+            return config('widgets.fallback_message', "<!-- Error rendering widget [{$alias}] -->");
+        }
     }
+
 }

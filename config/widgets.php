@@ -4,8 +4,5 @@ return [
     'widgets' => [
         // Example: 'weather' => \App\Widgets\WeatherWidget::class,
     ],
-    'cache' => [
-        'enabled' => true,
-        'ttl' => 60, // Cache time-to-live in minutes
-    ],
+    'fallback_message' => '<div class="widget-error">Widget unavailable</div>', // New option
 ];
