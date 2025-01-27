@@ -27,6 +27,10 @@ class WidgetServiceProvider extends ServiceProvider
 
     public function boot()
     {
+        if (config('widgets.disable_cache', false)) {
+            $this->clearViewCache();
+        }
+
         // Publish the configuration file
         $this->publishes([
             __DIR__ . '/../../config/widgets.php' => config_path('widgets.php'),
@@ -35,13 +39,12 @@ class WidgetServiceProvider extends ServiceProvider
         // Load views if the directory exists
         if (is_dir(__DIR__.'/../../resources/views/widgets')) {
             $this->loadViewsFrom(__DIR__.'/../../resources/views/widgets', 'widgets');
+        } else {
+            \Log::warning('Widgets view directory not found: ' . __DIR__.'/../../resources/views/widgets');
         }
 
         $this->loadTranslationsFrom(__DIR__ . '/../../resources/lang', 'widget-package');
         $this->registerWidgets();
-
-        // Load routes from the package
-        //$this->loadRoutesFrom(__DIR__ . '/../../../../routes/web.php');
 
         // Register Blade directive for widgets
         Blade::directive('widget', function ($expression) {
@@ -75,5 +78,10 @@ class WidgetServiceProvider extends ServiceProvider
                 }
             }
         }
+    }
+
+    protected function clearViewCache()
+    {
+        app('files')->deleteDirectory(storage_path('framework/views'));
     }
 }

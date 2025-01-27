@@ -17,5 +17,9 @@ class PublishWidgetConfig extends Command
         ]);
 
         $this->info('Widget package configuration published successfully!');
+
+        $this->commands([
+            \Highvertical\WidgetPackage\Console\Commands\ClearWidgetCache::class,
+        ]);
     }
 }
