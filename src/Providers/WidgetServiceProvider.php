@@ -80,6 +80,7 @@ class WidgetServiceProvider extends ServiceProvider
         }
     }
 
+    // clear the package cache
     protected function clearViewCache()
     {
         app('files')->deleteDirectory(storage_path('framework/views'));
