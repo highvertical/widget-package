@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit bootstrap="vendor/autoload.php"
-         colors="true"
-         verbose="true">
+         cacheDirectory=".phpunit.cache"
+         colors="true">
     <testsuites>
         <testsuite name="Widget Package Test Suite">
             <directory>tests</directory>

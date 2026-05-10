@@ -1,40 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Highvertical\WidgetPackage\View\Components;
 
+use Illuminate\Contracts\View\View;
 use Illuminate\View\Component;
 
 class WidgetComponent extends Component
 {
     /**
-     * @var string
-     */
-    public $alias;
-
-    /**
-     * @var array<string, mixed>
-     */
-    public $data;
-
-    /**
-     * @param  string  $alias
      * @param  array<string, mixed>  $data
-     * @return void
      */
-    public function __construct($alias, array $data = array())
-    {
-        $this->alias = $alias;
-        $this->data = $data;
-    }
+    public function __construct(
+        public readonly string $alias,
+        public readonly array $data = []
+    ) {}
 
-    /**
-     * @return \Illuminate\View\View|string
-     */
-    public function render()
+    public function render(): View
     {
-        return view('widget-package::components.widget', array(
+        return view('widget-package::components.widget', [
             'alias' => $this->alias,
             'data' => $this->data,
-        ));
+        ]);
     }
 }

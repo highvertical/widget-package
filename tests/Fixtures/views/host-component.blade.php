@@ -1,1 +1,1 @@
-<x-widget-package alias="view-widget" :data="array('name' => $name)" />
+<x-widget-package alias="view-widget" :data="['name' => $name]" />
