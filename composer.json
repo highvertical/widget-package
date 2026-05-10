@@ -1,9 +1,15 @@
 {
     "name": "highvertical/widget-package",
-    "description": "A simple and flexible widget package for Laravel. Compatible with Laravel 6.x and above.",
-    "version": "1.1.3",
+    "description": "A Blade-first widget package for Laravel 7, 8, and 9 applications.",
     "type": "package",
     "license": "MIT",
+    "keywords": [
+        "blade",
+        "laravel",
+        "laravel-package",
+        "widget"
+    ],
+    "homepage": "https://github.com/highvertical/widget-package",
     "authors": [
         {
             "name": "Highvertical",
@@ -12,7 +18,13 @@
     ],
     "require": {
         "php": "^7.2.5|^8.0",
-        "illuminate/support": "^6.0|^7.0|^8.0|^9.0|^10.0"
+        "illuminate/contracts": "^7.0|^8.0|^9.0",
+        "illuminate/support": "^7.0|^8.0|^9.0",
+        "illuminate/view": "^7.0|^8.0|^9.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^5.0|^6.0|^7.0",
+        "phpunit/phpunit": "^8.5.8|^9.5"
     },
     "autoload": {
         "psr-4": {
@@ -22,11 +34,26 @@
             "src/helpers.php"
         ]
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Highvertical\\WidgetPackage\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    },
+    "support": {
+        "issues": "https://github.com/highvertical/widget-package/issues",
+        "source": "https://github.com/highvertical/widget-package"
+    },
     "extra": {
         "laravel": {
             "providers": [
                 "Highvertical\\WidgetPackage\\Providers\\WidgetServiceProvider"
             ]
         }
+    },
+    "config": {
+        "sort-packages": true
     }
 }

@@ -1,243 +1,289 @@
-# Widget Package for Laravel
+# Highvertical Widget Package
 
-## Introduction
+Blade-first widgets for Laravel 7, 8, and 9.
 
-The Widget Package is a simple yet powerful Laravel package that allows developers to create reusable widgets for their applications. These widgets can be used anywhere in Blade views, making it easier to manage complex UIs, build dynamic content, and maintain a clean separation of concerns. The package is designed to be compatible with both small and large projects, including modular applications like those built with nwidart/laravel-modules.
+This v1 line is intentionally conservative: it stays compatible with older Laravel applications, avoids automatic host-project mutations, and keeps rendering escaped by default.
 
-## Features
+## Compatibility
 
-#### Simple Widget Creation:
-Create widgets that can be easily rendered in Blade views.
+| Package line | Laravel | PHP | Status |
+| --- | --- | --- | --- |
+| `1.x` | `^7.0 \| ^8.0 \| ^9.0` | `^7.2.5 \| ^8.0` | Current stable line |
+| `2.x` | Laravel 10+ | TBA | Planned |
 
-#### Caching: 
-Built-in support for caching widget output to improve performance.
+Laravel 10+ users should wait for the `2.x` line when it is released.
 
-#### Dynamic Configuration: 
-Define and manage widgets via a configuration file.
+## Safety
 
-#### Modular Compatibility: 
-Fully compatible with modular applications, including those using nwidart/laravel-modules.
+This package does not modify your application unless you explicitly publish resources.
 
-#### Advanced Blade Directives: 
-Use custom Blade directives to render widgets anywhere in your views.
+It does not:
+
+- write files into your application during normal boot
+- clear caches, routes, config, or compiled views
+- run migrations automatically
+- register middleware
+- make HTTP requests
+- scan your filesystem or modules on each request
+- inject remote assets, telemetry, or tracking
 
 ## Installation
-
-- Step 1: Install the Package
-Install the package via Composer:
 
 ```bash
 composer require highvertical/widget-package
 ```
 
-- Step 2: Publish the Configuration File
-Publish the package's configuration file to your Laravel application's config directory:
+Laravel package discovery is enabled by default. If you need manual registration, add the service provider to `config/app.php`:
+
+```php
+'providers' => [
+    Highvertical\WidgetPackage\Providers\WidgetServiceProvider::class,
+],
+```
+
+## Optional Publishing
+
+Publish the config file:
+
+```bash
+php artisan vendor:publish --tag=widget-package-config
+```
+
+This creates:
+
+```text
+config/widget-package.php
+```
+
+Legacy `1.x` applications that still expect `config/widgets.php` may continue using:
 
 ```bash
 php artisan vendor:publish --tag=widget-config
 ```
 
-This command will create a config/widgets.php file in your application.
-
-- Step 3: Autoload the Service Provider (Optional)
-If your application does not support package auto-discovery, add the service provider manually in config/app.php:
+Publish the package views if you want to customize the built-in component template:
 
 ```bash
-'providers' => [
-    // Other Service Providers...
+php artisan vendor:publish --tag=widget-package-views
+```
 
-    Highvertical\WidgetPackage\Providers\WidgetServiceProvider::class,
+This creates:
+
+```text
+resources/views/vendor/widget-package/components/widget.blade.php
+```
+
+The package does not currently ship assets or migrations, so there are no `widget-package-assets` or `widget-package-migrations` publish groups in `1.x`.
+
+## Configuration
+
+Publishing is optional. The package works without it.
+
+Preferred config:
+
+```php
+<?php
+
+return [
+    'widgets' => [
+        // 'profile-card' => \App\Widgets\ProfileCardWidget::class,
+    ],
+];
+```
+
+## Creating a Widget
+
+Create a widget class that extends `Highvertical\WidgetPackage\Widgets\Widget`:
+
+```php
+<?php
+
+namespace App\Widgets;
+
+use Highvertical\WidgetPackage\Widgets\Widget;
+
+class WelcomeWidget extends Widget
+{
+    public function render(array $params = array())
+    {
+        return view('widgets.welcome', array(
+            'name' => isset($params['name']) ? $params['name'] : 'Guest',
+        ));
+    }
+}
+```
+
+Register it in `config/widget-package.php`:
+
+```php
+'widgets' => [
+    'welcome' => \App\Widgets\WelcomeWidget::class,
 ],
 ```
 
 ## Basic Usage
 
-- Step 1: Create a Widget
-Widgets can be created anywhere in your application. Here's an example of a simple weather widget:
+### Blade component
 
-```bash
-<?php
+```blade
+<x-widget-package alias="welcome" :data="['name' => 'Taylor']" />
+```
 
-namespace App\Widgets;
+### Blade include alias
 
-use Highvertical\WidgetPackage\Widgets\Widget;
+```blade
+@widgetPackage(['alias' => 'welcome', 'data' => ['name' => 'Taylor']])
+```
 
-class WeatherWidget extends Widget
+### Legacy directive
+
+The original `@widget` directive remains available in `1.x` for backward compatibility:
+
+```blade
+@widget('welcome', ['name' => 'Taylor'])
+```
+
+### Helper API
+
+```php
+echo widgetPackage('welcome', array('name' => 'Taylor'));
+```
+
+### Programmatic registration
+
+You can also register widgets in your own service provider:
+
+```php
+use Highvertical\WidgetPackage\WidgetManager;
+
+public function boot()
 {
-    public function render(array $params = [])
-    {
-        $location = $params['location'] ?? 'Unknown Location';
-
-        // Mocked data, replace with real data fetching logic
-        $weatherData = [
-            'location' => $location,
-            'temperature' => '25°C',
-            'condition' => 'Sunny',
-        ];
-
-        return view('widgets.weather', compact('weatherData'));
-    }
+    app(WidgetManager::class)->register('welcome', \App\Widgets\WelcomeWidget::class);
 }
 ```
 
-- Step 2: Register the Widget
-After creating the widget class, register it in your config/widgets.php file:
-
-```bash
-<?php
-
-return [
-    'widgets' => [
-        'weather' => \App\Widgets\WeatherWidget::class,
-    ],
-    'cache' => [
-        'enabled' => true,
-        'ttl' => 60, // Cache time-to-live in minutes
-    ],
-];
-```
-
-- Step 3: Use the Widget in a Blade View
-You can now use your widget in any Blade view with the custom @widget directive:
-
-```bash
-@widget('weather', ['location' => 'New York'])
-```
+The legacy `widget()` and `register_widget()` helpers are still available in `1.x`, but the Blade component and `widgetPackage()` helper are the preferred APIs for new code.
 
 ## Advanced Usage
 
-### Caching
-The Widget Package supports caching out of the box. To enable caching, simply ensure that the cache.enabled configuration is set to true in your config/widgets.php file:
+### Constructor dependencies
 
-```bash
-'cache' => [
-    'enabled' => true,
-    'ttl' => 60, // Cache time-to-live in minutes
-],
-```
+Widget classes are resolved through Laravel's container, so dependencies may be injected normally:
 
-When caching is enabled, the widget output is stored and reused for subsequent requests within the specified time-to-live (TTL) period.
-
-### Dynamic Widget Configuration
-
-Widgets can be defined dynamically across different parts of your application, including within modular applications. This allows for more flexible and maintainable code, particularly in larger projects.
-
-Example: Modular Widgets with nwidart/laravel-modules
-
-If you are using nwidart/laravel-modules, you can define widgets within individual modules. For example, in a module named Blog, create a Config/widgets.php file:
-
-```bash
-<?php
-
-return [
-    'widgets' => [
-        'recentPosts' => \Modules\Blog\Widgets\RecentPostsWidget::class,
-    ],
-];
-```
-
-The package will automatically detect and register these widgets, making them available across your entire application.
-
-### Handling Widget Dependencies
-
-Widgets can have dependencies that need to be resolved by Laravel's service container. You can easily inject these dependencies by defining a constructor in your widget class:
-
-```bash
+```php
 <?php
 
 namespace App\Widgets;
 
-use App\Services\WeatherService;
+use App\Services\ProfileService;
 use Highvertical\WidgetPackage\Widgets\Widget;
 
-class WeatherWidget extends Widget
+class ProfileWidget extends Widget
 {
-    protected $weatherService;
+    /**
+     * @var \App\Services\ProfileService
+     */
+    protected $profiles;
 
-    public function __construct(WeatherService $weatherService)
+    public function __construct(ProfileService $profiles)
     {
-        $this->weatherService = $weatherService;
+        $this->profiles = $profiles;
     }
 
-    public function render(array $params = [])
+    public function render(array $params = array())
     {
-        $location = $params['location'] ?? 'Unknown Location';
-        $weatherData = $this->weatherService->getWeather($location);
-
-        return view('widgets.weather', compact('weatherData'));
+        return view('widgets.profile', array(
+            'profile' => $this->profiles->find(isset($params['user_id']) ? $params['user_id'] : null),
+        ));
     }
 }
 ```
 
-### Extending and Overriding Configuration
-To extend or override the default widget configuration, modify your config/widgets.php file. This is particularly useful if you are integrating the package into an existing project and need to adapt it to your specific needs.
+### Escaped output by default
 
-### Blade Directives
-The package registers a custom Blade directive @widget to make it easy to render widgets in your views. This directive takes the widget alias and an optional array of parameters.
+If your widget returns a plain string, the package escapes it before rendering. This is the default safe path.
 
-```bash
-@widget('weather', ['location' => 'San Francisco'])
-```
+### Explicit raw HTML
 
-## Example Widgets
+If you intentionally want raw HTML output, return an `Illuminate\Support\HtmlString`:
 
-- Example 1: Recent Posts Widget
+```php
+use Illuminate\Support\HtmlString;
 
-```bash
-<?php
-
-namespace Modules\Blog\Widgets;
-
-use Highvertical\WidgetPackage\Widgets\Widget;
-use Modules\Blog\Repositories\PostRepository;
-
-class RecentPostsWidget extends Widget
+public function render(array $params = array())
 {
-    protected $postRepository;
-
-    public function __construct(PostRepository $postRepository)
-    {
-        $this->postRepository = $postRepository;
-    }
-
-    public function render(array $params = [])
-    {
-        $posts = $this->postRepository->getRecentPosts($params['limit'] ?? 5);
-
-        return view('blog::widgets.recent-posts', compact('posts'));
-    }
+    return new HtmlString('<strong>Trusted markup</strong>');
 }
 ```
 
-- Example 2: User Profile Widget
+Use this sparingly and only with trusted content.
 
-```bash
-<?php
+### Overriding the package view
 
-namespace App\Widgets;
+After publishing views, you may customize the wrapper used by:
 
-use Highvertical\WidgetPackage\Widgets\Widget;
-use App\Models\User;
-
-class UserProfileWidget extends Widget
-{
-    public function render(array $params = [])
-    {
-        $user = User::find($params['user_id']);
-
-        return view('widgets.user-profile', compact('user'));
-    }
-}
+```blade
+<x-widget-package ... />
 ```
 
-## Customization and Extensibility
+Override file:
 
-The Widget Package is designed to be easily customizable and extensible. You can create your own widgets, customize existing ones, or even extend the package's core functionality to meet your specific needs.
+```text
+resources/views/vendor/widget-package/components/widget.blade.php
+```
+
+## Troubleshooting
+
+### Widget not found
+
+Make sure the alias exists in `config/widget-package.php` or is registered programmatically before rendering.
+
+### Widget class rejected
+
+Widget classes must extend `Highvertical\WidgetPackage\Widgets\Widget`.
+
+### Raw HTML is escaped
+
+Return an `HtmlString` or a Blade view if you truly want HTML output. Plain strings are escaped intentionally.
+
+### Published config changes are not visible
+
+Run:
+
+```bash
+php artisan config:clear
+```
+
+only if your application has cached configuration. The package itself never clears config automatically.
+
+## Testing
+
+Run the package test suite with:
+
+```bash
+composer test
+```
+
+The repository includes an Orchestra Testbench setup for Laravel 7, 8, and 9 compatibility work.
+
+## CI
+
+GitHub Actions is configured with a Laravel/PHP matrix covering the supported `1.x` line. If any dependency combination proves unresolvable in your environment, remove only that matrix entry and document the reason in the workflow or release notes.
 
 ## Contributing
 
-We welcome contributions to the Widget Package. If you have ideas for improvements, find a bug, or want to help with the documentation, feel free to submit a pull request or open an issue on GitHub.
+1. Fork the repository.
+2. Install dependencies with Composer.
+3. Run `composer test`.
+4. Submit a pull request with focused changes and clear compatibility notes.
+
+## Upgrade Path
+
+- Laravel 7, 8, and 9 projects should remain on `1.x`.
+- Laravel 10+ projects should adopt `2.x` when that line is released.
+- `config/widget-package.php` is the preferred config file in `1.2.0`; `config/widgets.php` remains supported as a legacy alias for backward compatibility.
+- Because this repository already contains a `1.1.3` version marker, the safest next stable tag for this work is a later `1.x` release, not a new `1.0.0` tag.
 
 ## License
 
-The Widget Package is open-sourced software licensed under the MIT license.
+MIT
