@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Highvertical\WidgetPackage;
 
 use Highvertical\WidgetPackage\Exceptions\InvalidWidgetException;
@@ -7,38 +9,30 @@ use Highvertical\WidgetPackage\Exceptions\InvalidWidgetOutputException;
 use Highvertical\WidgetPackage\Exceptions\WidgetNotFoundException;
 use Highvertical\WidgetPackage\Widgets\Widget;
 use Illuminate\Contracts\Container\Container;
-use Illuminate\Contracts\Support\Htmlable;
 use Illuminate\Contracts\Support\Renderable;
 use Illuminate\Support\HtmlString;
 
 class WidgetManager
 {
     /**
-     * @var \Illuminate\Contracts\Container\Container
+     * @var array<string, class-string<Widget>>
      */
-    protected $container;
+    private array $widgets = [];
 
     /**
-     * @var array<string, string>
+     * @param  array<string, class-string<Widget>>  $widgets
      */
-    protected $widgets = array();
-
-    /**
-     * @param  \Illuminate\Contracts\Container\Container  $container
-     * @param  array<string, string>  $widgets
-     */
-    public function __construct(Container $container, array $widgets = array())
-    {
-        $this->container = $container;
+    public function __construct(
+        private readonly Container $container,
+        array $widgets = []
+    ) {
         $this->registerMany($widgets);
     }
 
     /**
-     * @param  string  $alias
-     * @param  string  $widgetClass
-     * @return $this
+     * @param  class-string<Widget>  $widgetClass
      */
-    public function register($alias, $widgetClass)
+    public function register(string $alias, string $widgetClass): static
     {
         $normalizedAlias = $this->normalizeAlias($alias);
 
@@ -56,10 +50,9 @@ class WidgetManager
     }
 
     /**
-     * @param  array<string, string>  $widgets
-     * @return $this
+     * @param  array<string, class-string<Widget>>  $widgets
      */
-    public function registerMany(array $widgets)
+    public function registerMany(array $widgets): static
     {
         foreach ($widgets as $alias => $widgetClass) {
             $this->register($alias, $widgetClass);
@@ -69,25 +62,20 @@ class WidgetManager
     }
 
     /**
-     * @param  string  $alias
-     * @param  string  $widgetClass
-     * @return $this
+     * @param  class-string<Widget>  $widgetClass
      */
-    public function registerWidget($alias, $widgetClass)
+    public function registerWidget(string $alias, string $widgetClass): static
     {
         return $this->register($alias, $widgetClass);
     }
 
-    /**
-     * @param  string  $alias
-     */
-    public function has($alias): bool
+    public function has(string $alias): bool
     {
         return array_key_exists($this->normalizeAlias($alias), $this->widgets);
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, class-string<Widget>>
      */
     public function all(): array
     {
@@ -95,18 +83,14 @@ class WidgetManager
     }
 
     /**
-     * @param  string  $alias
      * @param  array<string, mixed>  $params
      */
-    public function render($alias, array $params = array()): HtmlString
+    public function render(string $alias, array $params = []): HtmlString
     {
         return $this->normalizeOutput($this->make($alias)->render($params));
     }
 
-    /**
-     * @param  string  $alias
-     */
-    public function make($alias): Widget
+    public function make(string $alias): Widget
     {
         $normalizedAlias = $this->normalizeAlias($alias);
 
@@ -123,13 +107,10 @@ class WidgetManager
         return $widget;
     }
 
-    /**
-     * @param  mixed  $output
-     */
-    protected function normalizeOutput($output): HtmlString
+    protected function normalizeOutput(mixed $output): HtmlString
     {
-        if ($output instanceof Htmlable) {
-            return new HtmlString($output->toHtml());
+        if ($output instanceof HtmlString) {
+            return $output;
         }
 
         if ($output instanceof Renderable) {
@@ -145,15 +126,12 @@ class WidgetManager
         }
 
         throw new InvalidWidgetOutputException(sprintf(
-            'Widget output must be a scalar, null, Htmlable, Renderable, or stringable object. [%s] given.',
+            'Widget output must be a scalar, null, HtmlString, Renderable, or stringable object. [%s] given.',
             is_object($output) ? get_class($output) : gettype($output)
         ));
     }
 
-    /**
-     * @param  mixed  $alias
-     */
-    protected function normalizeAlias($alias): string
+    protected function normalizeAlias(mixed $alias): string
     {
         $normalizedAlias = trim((string) $alias);
 

@@ -1,17 +1,17 @@
 # Highvertical Widget Package
 
-Blade-first widgets for Laravel 7, 8, and 9.
+Blade-first widgets for Laravel 10, 11, 12, and 13.
 
-This v1 line is intentionally conservative: it stays compatible with older Laravel applications, avoids automatic host-project mutations, and keeps rendering escaped by default.
+`v2.x` is the modern package line for Laravel 10+ applications. It keeps the package small, safe, and non-disruptive while preserving a clean Blade-first developer experience.
 
 ## Compatibility
 
 | Package line | Laravel | PHP | Status |
 | --- | --- | --- | --- |
-| `1.x` | `^7.0 \| ^8.0 \| ^9.0` | `^7.2.5 \| ^8.0` | Current stable line |
-| `2.x` | Laravel 10+ | TBA | Planned |
+| `1.x` | `^7.0 \| ^8.0 \| ^9.0` | `^7.2.5 \| ^8.0` | Maintained legacy line |
+| `2.x` | `^10.0 \| ^11.0 \| ^12.0 \| ^13.0` | `^8.1` | Current modern line |
 
-Laravel 10+ users should wait for the `2.x` line when it is released.
+Current latest stable Laravel line verified for this package: Laravel `13`, using Orchestra Testbench `11`. Sources: [laravel/framework on Packagist](https://packagist.org/packages/laravel/framework) and [orchestra/testbench on Packagist](https://packagist.org/packages/orchestra/testbench).
 
 ## Safety
 
@@ -24,13 +24,13 @@ It does not:
 - run migrations automatically
 - register middleware
 - make HTTP requests
-- scan your filesystem or modules on each request
 - inject remote assets, telemetry, or tracking
+- scan arbitrary directories or modules on each request
 
 ## Installation
 
 ```bash
-composer require highvertical/widget-package
+composer require highvertical/widget-package:^2.0
 ```
 
 Laravel package discovery is enabled by default. If you need manual registration, add the service provider to `config/app.php`:
@@ -43,7 +43,7 @@ Laravel package discovery is enabled by default. If you need manual registration
 
 ## Optional Publishing
 
-Publish the config file:
+Publish the package config:
 
 ```bash
 php artisan vendor:publish --tag=widget-package-config
@@ -55,13 +55,7 @@ This creates:
 config/widget-package.php
 ```
 
-Legacy `1.x` applications that still expect `config/widgets.php` may continue using:
-
-```bash
-php artisan vendor:publish --tag=widget-config
-```
-
-Publish the package views if you want to customize the built-in component template:
+Publish the component wrapper view if you want to customize the default widget shell:
 
 ```bash
 php artisan vendor:publish --tag=widget-package-views
@@ -73,13 +67,11 @@ This creates:
 resources/views/vendor/widget-package/components/widget.blade.php
 ```
 
-The package does not currently ship assets or migrations, so there are no `widget-package-assets` or `widget-package-migrations` publish groups in `1.x`.
+Publishing is optional. The package works without publishing any files.
 
 ## Configuration
 
-Publishing is optional. The package works without it.
-
-Preferred config:
+Default config:
 
 ```php
 <?php
@@ -91,6 +83,8 @@ return [
 ];
 ```
 
+`config/widget-package.php` is the only supported config file in `v2.x`.
+
 ## Creating a Widget
 
 Create a widget class that extends `Highvertical\WidgetPackage\Widgets\Widget`:
@@ -101,14 +95,15 @@ Create a widget class that extends `Highvertical\WidgetPackage\Widgets\Widget`:
 namespace App\Widgets;
 
 use Highvertical\WidgetPackage\Widgets\Widget;
+use Illuminate\Contracts\View\View;
 
 class WelcomeWidget extends Widget
 {
-    public function render(array $params = array())
+    public function render(array $params = []): View
     {
-        return view('widgets.welcome', array(
-            'name' => isset($params['name']) ? $params['name'] : 'Guest',
-        ));
+        return view('widgets.welcome', [
+            'name' => $params['name'] ?? 'Guest',
+        ]);
     }
 }
 ```
@@ -123,52 +118,67 @@ Register it in `config/widget-package.php`:
 
 ## Basic Usage
 
-### Blade component
+### Preferred Blade component
 
 ```blade
 <x-widget-package alias="welcome" :data="['name' => 'Taylor']" />
 ```
 
-### Blade include alias
+### Preferred helper
+
+```php
+echo widgetPackage('welcome', ['name' => 'Taylor']);
+```
+
+### Include alias
 
 ```blade
 @widgetPackage(['alias' => 'welcome', 'data' => ['name' => 'Taylor']])
 ```
 
-### Legacy directive
+### Blade directive
 
-The original `@widget` directive remains available in `1.x` for backward compatibility:
+The `@widget(...)` Blade directive is still available in `v2.x` for template continuity:
 
 ```blade
 @widget('welcome', ['name' => 'Taylor'])
 ```
 
-### Helper API
-
-```php
-echo widgetPackage('welcome', array('name' => 'Taylor'));
-```
-
 ### Programmatic registration
 
-You can also register widgets in your own service provider:
+You can register widgets in your own service provider if you prefer code-based registration:
 
 ```php
 use Highvertical\WidgetPackage\WidgetManager;
 
-public function boot()
+public function boot(): void
 {
     app(WidgetManager::class)->register('welcome', \App\Widgets\WelcomeWidget::class);
 }
 ```
 
-The legacy `widget()` and `register_widget()` helpers are still available in `1.x`, but the Blade component and `widgetPackage()` helper are the preferred APIs for new code.
+## Security Behavior
+
+Plain string output is escaped by default.
+
+If you intentionally want raw HTML output, return an `Illuminate\Support\HtmlString`:
+
+```php
+use Illuminate\Support\HtmlString;
+
+public function render(array $params = []): HtmlString
+{
+    return new HtmlString('<strong>Trusted markup</strong>');
+}
+```
+
+Raw HTML pass-through is intentionally limited to `HtmlString`. Returning a generic `Htmlable` object is rejected by the package.
 
 ## Advanced Usage
 
 ### Constructor dependencies
 
-Widget classes are resolved through Laravel's container, so dependencies may be injected normally:
+Widget classes are resolved through Laravel's container, so constructor injection works normally:
 
 ```php
 <?php
@@ -177,60 +187,66 @@ namespace App\Widgets;
 
 use App\Services\ProfileService;
 use Highvertical\WidgetPackage\Widgets\Widget;
+use Illuminate\Contracts\View\View;
 
 class ProfileWidget extends Widget
 {
-    /**
-     * @var \App\Services\ProfileService
-     */
-    protected $profiles;
-
-    public function __construct(ProfileService $profiles)
-    {
-        $this->profiles = $profiles;
+    public function __construct(
+        private readonly ProfileService $profiles
+    ) {
     }
 
-    public function render(array $params = array())
+    public function render(array $params = []): View
     {
-        return view('widgets.profile', array(
-            'profile' => $this->profiles->find(isset($params['user_id']) ? $params['user_id'] : null),
-        ));
+        return view('widgets.profile', [
+            'profile' => $this->profiles->find($params['user_id'] ?? null),
+        ]);
     }
 }
 ```
-
-### Escaped output by default
-
-If your widget returns a plain string, the package escapes it before rendering. This is the default safe path.
-
-### Explicit raw HTML
-
-If you intentionally want raw HTML output, return an `Illuminate\Support\HtmlString`:
-
-```php
-use Illuminate\Support\HtmlString;
-
-public function render(array $params = array())
-{
-    return new HtmlString('<strong>Trusted markup</strong>');
-}
-```
-
-Use this sparingly and only with trusted content.
 
 ### Overriding the package view
 
-After publishing views, you may customize the wrapper used by:
-
-```blade
-<x-widget-package ... />
-```
-
-Override file:
+After publishing views, customize:
 
 ```text
 resources/views/vendor/widget-package/components/widget.blade.php
 ```
+
+## Upgrade Guide From v1
+
+`v2.x` removes legacy Laravel 7–9 compatibility code.
+
+Changes to note:
+
+- `config/widgets.php` is no longer supported; move registrations to `config/widget-package.php`.
+- Legacy global helpers `widget()`, `register_widget()`, `widget_package_render()`, `widget_package_register()`, and `widget_package_manager()` have been removed.
+- The preferred APIs are `<x-widget-package />` and `widgetPackage()`.
+- The `@widget(...)` Blade directive remains available.
+
+## Testing
+
+Run the package test suite with:
+
+```bash
+composer test
+```
+
+Format the codebase with:
+
+```bash
+vendor/bin/pint
+```
+
+## CI
+
+GitHub Actions covers the supported `v2.x` matrix:
+
+- Laravel 10 / Testbench 8 / PHP 8.1 and 8.2
+- Laravel 11 / Testbench 9 / PHP 8.2
+- Laravel 12 / Testbench 10 / PHP 8.2
+- Laravel 13 / Testbench 11 / PHP 8.3
+- Lowest dependencies on Laravel 10 / Testbench 8 / PHP 8.1
 
 ## Troubleshooting
 
@@ -244,45 +260,14 @@ Widget classes must extend `Highvertical\WidgetPackage\Widgets\Widget`.
 
 ### Raw HTML is escaped
 
-Return an `HtmlString` or a Blade view if you truly want HTML output. Plain strings are escaped intentionally.
-
-### Published config changes are not visible
-
-Run:
-
-```bash
-php artisan config:clear
-```
-
-only if your application has cached configuration. The package itself never clears config automatically.
-
-## Testing
-
-Run the package test suite with:
-
-```bash
-composer test
-```
-
-The repository includes an Orchestra Testbench setup for Laravel 7, 8, and 9 compatibility work.
-
-## CI
-
-GitHub Actions is configured with a Laravel/PHP matrix covering the supported `1.x` line. If any dependency combination proves unresolvable in your environment, remove only that matrix entry and document the reason in the workflow or release notes.
+Plain strings are intentionally escaped. Return `HtmlString` if you need trusted raw markup.
 
 ## Contributing
 
-1. Fork the repository.
-2. Install dependencies with Composer.
-3. Run `composer test`.
-4. Submit a pull request with focused changes and clear compatibility notes.
-
-## Upgrade Path
-
-- Laravel 7, 8, and 9 projects should remain on `1.x`.
-- Laravel 10+ projects should adopt `2.x` when that line is released.
-- `config/widget-package.php` is the preferred config file in `1.2.0`; `config/widgets.php` remains supported as a legacy alias for backward compatibility.
-- Because this repository already contains a `1.1.3` version marker, the safest next stable tag for this work is a later `1.x` release, not a new `1.0.0` tag.
+1. Install Composer dependencies.
+2. Run `composer test`.
+3. Run `vendor/bin/pint`.
+4. Submit a focused pull request with compatibility notes when relevant.
 
 ## License
 

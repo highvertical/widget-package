@@ -1,6 +1,6 @@
 @php
-    $widgetPackageData = isset($data) && is_array($data) ? $data : array();
-    $widgetPackageOutput = isset($output) ? $output : widget_package_render($alias, $widgetPackageData);
+    $widgetPackageData = isset($data) && is_array($data) ? $data : [];
+    $widgetPackageOutput = isset($output) ? $output : widgetPackage($alias, $widgetPackageData);
 @endphp
 
 {{ $widgetPackageOutput }}

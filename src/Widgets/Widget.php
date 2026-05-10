@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Highvertical\WidgetPackage\Widgets;
 
 abstract class Widget
@@ -11,7 +13,6 @@ abstract class Widget
      * Plain strings are escaped by the package before output.
      *
      * @param  array<string, mixed>  $params
-     * @return mixed
      */
-    abstract public function render(array $params = array());
+    abstract public function render(array $params = []): mixed;
 }

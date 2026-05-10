@@ -4,6 +4,4 @@ namespace Highvertical\WidgetPackage\Exceptions;
 
 use InvalidArgumentException;
 
-class WidgetNotFoundException extends InvalidArgumentException
-{
-}
+class WidgetNotFoundException extends InvalidArgumentException {}
